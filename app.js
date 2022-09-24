@@ -1,7 +1,9 @@
 import express from "express";
 
+import users from "./routers/User_router.js"
+
 import Db from "./db/db.js";
-console.log(Db)
+// console.log(Db)
 
 import path from "path";
 
@@ -16,8 +18,11 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+app.use(users);
+
+
 Db.sync()
     .then((console.log(`connexion à la base de données : ${Db.config.database}`)))
     .catch(err => (console.error(err)));
-
+    
 export default app;
