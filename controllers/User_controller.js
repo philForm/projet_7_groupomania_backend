@@ -25,16 +25,15 @@ const getOneUser = async (req, res, next) => {
 // Enregistrement d'un utilisateur
 const signupUser = async (req, res, next) => {
     console.log(req.body)
-    const { firstname, lastname, email } = await req.body;
+    const { firstname, lastname, email, picture } = await req.body;
     const hash = await bcrypt.hash(req.body.password, 10);
     Db.query(`
-            INSERT INTO users (firstname, lastname, pass_word, email) VALUES (?,?,?,?);`,
+            INSERT INTO users (firstname, lastname, pass_word, email, user_picture) VALUES (?,?,?,?,?);`,
         {
-            replacements: [firstname, lastname, hash, email],
+            replacements: [firstname, lastname, hash, email, picture],
             type: QueryTypes.INSERT
         }
     ).then(() => {
-        // res.send(user);
         res.status(201).json({ message: "Utilisateur créé !" });
     })
         .catch(error => res.status(500).json({ error }));

@@ -18,11 +18,11 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
-app.use(users);
+app.use("/api/auth", users);
 
 
 Db.sync()
     .then((console.log(`connexion à la base de données : ${Db.config.database}`)))
     .catch(err => (console.error(err)));
-    
+
 export default app;
