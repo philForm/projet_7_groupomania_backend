@@ -1,11 +1,12 @@
-import express from "express";
+const express = require("express");
 
-import users from "./routers/User_router.js"
+const users = require("./routers/User_router.js");
+const posts = require("./routers/Posts_router.js")
 
-import Db from "./db/db.js";
+const Db = require("./db/db.js");
 // console.log(Db)
 
-import path from "path";
+const path = require("path");
 
 const app = express();
 
@@ -18,11 +19,15 @@ app.use((req, res, next) => {
 
 app.use(express.json());
 
+app.use('/images', express.static(path.join(__dirname, 'images')));
+
 app.use("/api/auth", users);
+
+app.use("/api/post", posts);
 
 
 Db.sync()
     .then((console.log(`connexion à la base de données : ${Db.config.database}`)))
     .catch(err => (console.error(err)));
 
-export default app;
+module.exports = app;

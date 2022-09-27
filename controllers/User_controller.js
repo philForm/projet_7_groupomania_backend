@@ -1,8 +1,8 @@
-import { QueryTypes } from "sequelize";
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
+const { QueryTypes } = require("sequelize");
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 
-import Db from "../db/db.js";
+const Db = require("../db/db.js");
 
 // selectionne tous les utilisateurs dans la BDD
 const getAllUsers = async (req, res, next) => {
@@ -68,5 +68,5 @@ const loginUser = async (req, res, next) => {
 }
 
 
-export { getAllUsers, getOneUser, signupUser, loginUser };
+module.exports =  { getAllUsers, getOneUser, signupUser, loginUser };
 
