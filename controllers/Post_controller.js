@@ -4,13 +4,20 @@ const Db = require("../db/db.js")
 
 // Création d'un message
 const createPost = async (req, res, next) => {
-    console.log(req.body);
-    const { post, postPicture, userId } = await req.body;
-
-    Db.query(`
+    // console.log(req.body);
+    // const { post, postPicture, userId } = await req.body;
+    const { post, userId } = await req.body;
+    let postPicture
+    if (req.file.filename)
+        postPicture = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
+    await Db.query(`
             INSERT INTO posts (post, post_picture, user_id) VALUES (?,?,?);`,
         {
-            replacements: [post, postPicture, userId],
+            replacements: [
+                post,
+                postPicture,
+                userId
+            ],
             type: QueryTypes.INSERT
         }
     ).then(() => {
@@ -37,7 +44,7 @@ const idOfBd = async (req) => {
     // Récupération de l'id dans les paramètres de la requête
     const postId = JSON.parse(req.params.id);
     console.log(`postId into idOfBd : ${postId}`)
-    
+
     // Sélection dans la BDD du post ayant le même id que la requête.
     let idIntoBdd = await Db.query(
         `SELECT id FROM posts WHERE id = ?;`,

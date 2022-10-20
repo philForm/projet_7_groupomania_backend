@@ -87,7 +87,7 @@ const loginUser = async (req, res, next) => {
 
     // Comparaison entre l'email de la requête et celui présent dans la BDD
     if (!user || user.email != req.body.email) {
-        res.status(200).json({ message: "Email incorrect !" });
+        res.status(401).json({ message: "Email incorrect !" });
         return;
     };
     // Comparaison entre le mot de passe de la requête et celui présent dans la BDD
@@ -99,7 +99,7 @@ const loginUser = async (req, res, next) => {
             return;
         }
     };
-    // Si tout est ok, envoie de la réponse : id et token
+    // Si tout est ok, envoi de la réponse : id et token
     res.status(200).json({
         userId: user.id,
         token: jwt.sign(
@@ -108,7 +108,6 @@ const loginUser = async (req, res, next) => {
             { expiresIn: "24h" }
         )
     });
-
 }
 
 
