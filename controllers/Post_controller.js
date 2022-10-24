@@ -4,19 +4,27 @@ const Db = require("../db/db.js")
 
 // Création d'un message
 const createPost = async (req, res, next) => {
-    // console.log(req.body);
+    let { body, file } = req;
+    // let { file } = req;
+
+    console.log(`post : ${body.post}`);
+    console.log(`userId : ${body.userId}`);
+    console.log(`file : ${file}`);
     // const { post, postPicture, userId } = await req.body;
-    const { post, userId } = await req.body;
-    let postPicture
+    // const { post, userId } = await req.body;
+
+    let postPicture = "";
+    // Création de l'URL de l'image
     if (req.file.filename)
         postPicture = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
+
     await Db.query(`
             INSERT INTO posts (post, post_picture, user_id) VALUES (?,?,?);`,
         {
             replacements: [
-                post,
+                body.post,
                 postPicture,
-                userId
+                body.userId
             ],
             type: QueryTypes.INSERT
         }
@@ -32,7 +40,7 @@ const sendAllPosts = async (req, res, next) => {
         SELECT post, post_picture, user_id, createdAt
         FROM posts WHERE is_censored = 0
         ORDER BY createdAt DESC;
-        `
+    `
     );
     console.log(posts);
     res.send(posts);
