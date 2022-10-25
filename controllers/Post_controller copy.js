@@ -6,19 +6,18 @@ const Db = require("../db/db.js")
  * Création d'un message
  */
 const createPost = async (req, res, next) => {
-
     let { body, file } = req;
-    let postPicture = "";
 
     console.log(`post : ${body.post}`);
     console.log(`userId : ${body.userId}`);
     console.log(`file : ${file}`);
+    // const { post, postPicture, userId } = await req.body;
+    // const { post, userId } = await req.body;
 
+    let postPicture = "";
     // Création de l'URL de l'image
-    if (file != undefined)
-        postPicture = `${req.protocol}://${req.get('host')}/images/${file.filename}`;
-    else
-        postPicture = "rien";
+    if (req.file.filename)
+        postPicture = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
 
     await Db.query(`
             INSERT INTO posts (post, post_picture, user_id) VALUES (?,?,?);`,
@@ -40,23 +39,14 @@ const createPost = async (req, res, next) => {
  * Envoie tous les messages
  */
 const sendAllPosts = async (req, res, next) => {
-    // const [posts] = await Db.query(`
-    //     SELECT post, post_picture, user_id, createdAt
-    //     FROM posts WHERE is_censored = 0
-    //     ORDER BY createdAt DESC;
-    //     `
-    // );
-
-    const [posts2] = await Db.query(`
-        SELECT email, user_picture, post, post_picture, posts.id, posts.user_id, posts.createdAt 
-        FROM users 
-        INNER JOIN posts 
-        WHERE users.id = posts.user_id AND is_censored = 0
-        ORDER BY posts.createdAt DESC;
-        `
-    )
-    console.log(posts2);
-    res.send(posts2);
+    const [posts] = await Db.query(`
+        SELECT post, post_picture, user_id, createdAt
+        FROM posts WHERE is_censored = 0
+        ORDER BY createdAt DESC;
+    `
+    );
+    console.log(posts);
+    res.send(posts);
 
 };
 
