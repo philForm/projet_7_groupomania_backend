@@ -100,8 +100,11 @@ const modifyPost = async (req, res, next) => {
     console.log(`postId : ${postId}`)
     /// Id de la BDD
     const result = tab[0];
+    console.log(`result : ${result}`)
 
-    const { post, postPicture } = await req.body;
+    // const { post, postPicture } = await req.body;
+    const { post } = await req.body;
+    const postPicture = ""
     console.log(req.body.post);
 
     /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié
@@ -135,13 +138,29 @@ const deletePost = async (req, res, next) => {
 
     /// Si dans la BDD un Id correspond à l'Id de la requête, le message est supprimé.
     if (result != undefined) {
-
+        // Sélection de l'URL de l'image à supprimer du dossier images :
+        const [imageUrl] = await Db.query(`
+            SELECT post_picture FROM posts WHERE id = ?;`,
+            {
+                replacements: [postId],
+                type: QueryTypes.SELECT
+            }
+        )
+        console.log(imageUrl)
+        // Récupération du nom de l'image à partir de l'URL :
+        const image = imageUrl.post_picture.split('/images/')[1];
+        // Suppression de l'image :
+        fs.unlink(`images/${image}`, (err) => {
+            if (err) throw err;
+            console.log(`Image du post ${postId} supprimée !`);
+        });
+        // Suppression du post :
         await Db.query(`
             DELETE FROM posts
             WHERE id = ?;`,
             {
                 replacements: [postId],
-                type: QueryTypes.PUT
+                type: QueryTypes.DELETE
             }
         ).then(() => {
             res.status(201).json({ message: "Message supprimé !" });
