@@ -1,6 +1,7 @@
 const { QueryTypes } = require("sequelize");
-const fs = require("fs")
-const Db = require("../db/db.js")
+const fs = require("fs");
+const Db = require("../db/db.js");
+const utf8 = require("utf8");
 
 /**
  * Création d'un message
@@ -15,10 +16,15 @@ const createPost = async (req, res, next) => {
     console.log(`file : ${file}`);
 
     // Création de l'URL de l'image
-    if (file != undefined)
-        postPicture = `${req.protocol}://${req.get('host')}/images/${file.filename}`;
+    if (file != undefined) {
+        console.log(`file.filename: ${file.filename}`)
+
+        const name = file.filename
+        console.log(`name : ${name}`)
+        postPicture = `${req.protocol}://${req.get('host')}/images/${name}`;
+    }
     else
-        postPicture = "rien";
+        postPicture = "";
 
     await Db.query(`
             INSERT INTO posts (post, post_picture, user_id) VALUES (?,?,?);`,
@@ -147,13 +153,17 @@ const deletePost = async (req, res, next) => {
             }
         )
         console.log(imageUrl)
-        // Récupération du nom de l'image à partir de l'URL :
-        const image = imageUrl.post_picture.split('/images/')[1];
-        // Suppression de l'image :
-        fs.unlink(`images/${image}`, (err) => {
-            if (err) throw err;
-            console.log(`Image du post ${postId} supprimée !`);
-        });
+        // Vérification de l'existence de l'URL de l'image :
+        if (imageUrl.post_picture) {
+
+            // Récupération du nom de l'image à partir de l'URL :
+            const image = imageUrl.post_picture.split('/images/')[1];
+            // Suppression de l'image :
+            fs.unlink(`images/${image}`, (err) => {
+                if (err) throw err;
+                console.log(`Image du post ${postId} supprimée !`);
+            });
+        }
         // Suppression du post :
         await Db.query(`
             DELETE FROM posts
