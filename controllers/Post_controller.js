@@ -69,7 +69,7 @@ const sendAllPosts = async (req, res, next) => {
 /**
  * Renvoie l'Id de la requête et l'Id de la BDD
  * @param {*} req 
- * @returns {}
+ * @returns {object[]}
  */
 const idOfBd = async (req) => {
     // Récupération de l'id dans les paramètres de la requête
@@ -101,6 +101,7 @@ const modifyPost = async (req, res, next) => {
     /// Tableau qui récupère les Ids renvoyés par idOfBd().
     const tab = (await idOfBd(req)).map(el => el);
     // console.log(`tab : ${tab}`);
+
     /// Id de la requête
     const postId = tab[1];
     console.log(`postId : ${postId}`)
@@ -108,26 +109,60 @@ const modifyPost = async (req, res, next) => {
     const result = tab[0];
     console.log(`result : ${result}`)
 
-    // const { post, postPicture } = await req.body;
     const { post } = await req.body;
-    const postPicture = ""
+    let postPicture = ""
     console.log(req.body.post);
 
     /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié
     if (result != undefined) {
 
-        await Db.query(`
-            UPDATE posts
-            SET post = ?, post_picture = ?
-            WHERE id = ?;`,
+        // On selectionne dans la BDD les éléments visés par la modification :
+        const [postBDD] = await Db.query(`
+            SELECT post, post_picture FROM posts WHERE id=?;`,
             {
-                replacements: [post, postPicture, postId],
-                type: QueryTypes.PUT
+                replacements: [postId],
+                type: QueryTypes.SELECT
             }
-        ).then(() => {
-            res.status(201).json({ message: "Message modifié !" });
-        })
-            .catch(error => res.status(500).json({ error }));
+        );
+        // On vérifie si une image est présente dans la requête :
+        if (req.file != undefined) {
+            console.log("l'image existe");
+            postPicture = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
+            await Db.query(`
+                UPDATE posts
+                SET post_picture = ?
+                WHERE id = ?;`,
+                {
+                    replacements: [postPicture, postId],
+                    type: QueryTypes.PUT
+                }
+            ).then(() => {
+                res.status(201).json({ message: "L'image a été modifiée !" });
+            })
+                .catch(error => res.status(500).json({ error }));
+        }
+        // Vérification de la modification du messsage :
+        if (postBDD.post != req.body.post) {
+            console.log("post modifié !")
+
+            await Db.query(`
+                UPDATE posts
+                SET post = ?
+                WHERE id = ?;`,
+                {
+                    replacements: [req.body.post, postId],
+                    type: QueryTypes.PUT
+                }
+            ).then(() => {
+                res.status(201).json({ message: "Le message a été modifié !" });
+            })
+                .catch(error => res.status(500).json({ error }));
+
+        };
+
+        console.log('--------------------- postBDD.post')
+        console.log(postBDD.post)
+
     } else
         res.status(404).json({ message: "Post introuvable !" });
 }

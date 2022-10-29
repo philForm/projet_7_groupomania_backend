@@ -8,7 +8,7 @@ const postRouter = Router();
 
 postRouter.post("/", multer, createPost);
 postRouter.get("/", sendAllPosts);
-postRouter.put("/:id", modifyPost);
+postRouter.put("/:id", multer, modifyPost);
 postRouter.delete("/:id", deletePost);
 
 
