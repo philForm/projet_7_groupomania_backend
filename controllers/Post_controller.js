@@ -127,6 +127,16 @@ const modifyPost = async (req, res, next) => {
         // On vérifie si une image est présente dans la requête :
         if (req.file != undefined) {
             console.log("l'image existe");
+            // ------------------------------------------
+            // Récupération du nom de l'image à partir de l'URL dans la BDD :
+            const image = postBDD.post_picture.split('/images/')[1];
+            // Suppression de l'ancienne image du dossier images :
+            fs.unlink(`images/${image}`, (err) => {
+                if (err) throw err;
+                console.log(`Image ${image} supprimée de la BDD!`);
+            });
+            // ------------------------------------------
+            // Envoi de l'URL de la nouvelle image dans la BDD :
             postPicture = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
             await Db.query(`
                 UPDATE posts
