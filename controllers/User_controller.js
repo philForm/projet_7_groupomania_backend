@@ -1,10 +1,11 @@
 const { QueryTypes } = require("sequelize");
+const fs = require("fs");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 const Db = require("../db/db.js");
 
-// selectionne tous les utilisateurs dans la BDD
+// sélectionne tous les utilisateurs dans la BDD
 const getAllUsers = async (req, res, next) => {
     const [users] = await Db.query("SELECT * FROM users");
     if (users)
@@ -14,7 +15,9 @@ const getAllUsers = async (req, res, next) => {
 
 };
 
-// selectionne UN utilisateur dans la BDD avec son ID
+/**
+ * Sélectionne UN utilisateur dans la BDD avec son ID
+ */
 const getOneUser = async (req, res, next) => {
     const reqId = req.params.id
 
@@ -32,7 +35,9 @@ const getOneUser = async (req, res, next) => {
 
 };
 
-// Enregistrement d'un utilisateur
+/**
+ * Enregistrement d'un utilisateur
+ */
 const signupUser = async (req, res, next) => {
     console.log(req.body)
     // Destructuration du corps de la requête
@@ -71,7 +76,59 @@ const signupUser = async (req, res, next) => {
 
 };
 
-// Authentifie un utilisateur
+/**
+ * Ajout d'un avatar à l'utilisateur
+ */
+const addUserAvatar = async (req, res, next) => {
+
+    console.log("========== req.file")
+    console.log(req)
+
+    // Si une image est envoyée avec la requête :
+    if (req.file != undefined) {
+        // On vérifie si l'utilisateur a déjà un avatar :
+        let [picture] = await Db.query(`
+                SELECT user_picture 
+                FROM users
+                WHERE id = ?`,
+            {
+                replacements: [req.params.id],
+                type: QueryTypes.SELECT
+            }
+        );
+        // Si un avatar est présent dans la BDD, on le supprime :
+        if (picture.user_picture !== "") {
+            // Récupération du nom de l'image à partir de l'URL dans la BDD :
+            const avatar = picture.user_picture.split('/images/')[1];
+            // Suppression de l'ancienne image du dossier images :
+            fs.unlink(`images/${avatar}`, (err) => {
+                if (err) throw err;
+                console.log(`Avatar ${avatar} supprimée de la BDD!`);
+            });
+
+        }
+        // Envoi de l'URL du nouvel avatar dans la BDD :
+        const userAvatar = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
+        await Db.query(`
+            UPDATE users
+            SET user_picture = ?
+            WHERE id=?;`,
+            {
+                replacements: [userAvatar, req.params.id],
+                type: QueryTypes.UPDATE
+            }
+        ).then(() => {
+            res.status(201).json({ message: "L'avatar de l'utilisateur est créé !" });
+        })
+            .catch(error => res.status(500).json({ error }));
+    }
+    else
+        console.log("Pas de mise à jour possible !")
+}
+
+/**
+ * Authentifie un utilisateur
+ */
 const loginUser = async (req, res, next) => {
 
     let valid = false;
@@ -111,5 +168,5 @@ const loginUser = async (req, res, next) => {
 }
 
 
-module.exports = { getAllUsers, getOneUser, signupUser, loginUser };
+module.exports = { getAllUsers, getOneUser, signupUser, addUserAvatar, loginUser };
 

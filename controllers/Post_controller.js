@@ -116,7 +116,7 @@ const modifyPost = async (req, res, next) => {
     /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié
     if (result != undefined) {
 
-        // On selectionne dans la BDD les éléments visés par la modification :
+        // On sélectionne dans la BDD les éléments visés par la modification :
         const [postBDD] = await Db.query(`
             SELECT post, post_picture FROM posts WHERE id=?;`,
             {
