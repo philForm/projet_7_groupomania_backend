@@ -95,25 +95,11 @@ const idOfBd = async (req) => {
 
 }
 
-// Recherche le propriétaire d'un post :
-const postUserFind = async (req, res, next) => {
-    const [user] = await Db.query(`
-        SELECT user_id FROM posts WHERE id = ?`,
-        {
-            replacements: [req.params.id],
-            type: QueryTypes.SELECT
-        }
-    );
-    res.status(200).json({
-        userId: user.user_id
-    })
-};
-
 /// Modifie un Post
 const modifyPost = async (req, res, next) => {
 
     /// Tableau qui récupère les Ids renvoyés par idOfBd().
-    const tab = idOfBd(req).map(el => el);
+    const tab = (await idOfBd(req)).map(el => el);
     // console.log(`tab : ${tab}`);
 
     /// Id de la requête
@@ -123,70 +109,26 @@ const modifyPost = async (req, res, next) => {
     const result = tab[0];
     console.log(`result : ${result}`)
 
+    // const { post, postPicture } = await req.body;
     const { post } = await req.body;
-    let postPicture = ""
+    const postPicture = ""
     console.log(req.body.post);
 
     /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié
     if (result != undefined) {
 
-        // On sélectionne dans la BDD les éléments visés par la modification :
-        const [postBDD] = await Db.query(`
-            SELECT post, post_picture FROM posts WHERE id=?;`,
+        await Db.query(`
+            UPDATE posts
+            SET post = ?, post_picture = ?
+            WHERE id = ?;`,
             {
-                replacements: [postId],
-                type: QueryTypes.SELECT
+                replacements: [post, postPicture, postId],
+                type: QueryTypes.PUT
             }
-        );
-        // On vérifie si une image est présente dans la requête :
-        if (req.file != undefined) {
-            console.log("l'image existe");
-            // ------------------------------------------
-            // Récupération du nom de l'image à partir de l'URL dans la BDD :
-            const image = postBDD.post_picture.split('/images/')[1];
-            // Suppression de l'ancienne image du dossier images :
-            fs.unlink(`images/${image}`, (err) => {
-                if (err) throw err;
-                console.log(`Image ${image} supprimée de la BDD!`);
-            });
-            // ------------------------------------------
-            // Envoi de l'URL de la nouvelle image dans la BDD :
-            postPicture = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
-            await Db.query(`
-                UPDATE posts
-                SET post_picture = ?
-                WHERE id = ?;`,
-                {
-                    replacements: [postPicture, postId],
-                    type: QueryTypes.PUT
-                }
-            ).then(() => {
-                res.status(201).json({ message: "L'image a été modifiée !" });
-            })
-                .catch(error => res.status(500).json({ error }));
-        }
-        // Vérification de la modification du messsage :
-        if (postBDD.post != req.body.post) {
-            console.log("post modifié !")
-
-            await Db.query(`
-                UPDATE posts
-                SET post = ?
-                WHERE id = ?;`,
-                {
-                    replacements: [req.body.post, postId],
-                    type: QueryTypes.PUT
-                }
-            ).then(() => {
-                res.status(201).json({ message: "Le message a été modifié !" });
-            })
-                .catch(error => res.status(500).json({ error }));
-
-        };
-
-        console.log('--------------------- postBDD.post')
-        console.log(postBDD.post)
-
+        ).then(() => {
+            res.status(201).json({ message: "Message modifié !" });
+        })
+            .catch(error => res.status(500).json({ error }));
     } else
         res.status(404).json({ message: "Post introuvable !" });
 }
@@ -244,4 +186,4 @@ const deletePost = async (req, res, next) => {
 }
 
 
-module.exports = { createPost, sendAllPosts, modifyPost, deletePost, postUserFind };
+module.exports = { createPost, sendAllPosts, modifyPost, deletePost };

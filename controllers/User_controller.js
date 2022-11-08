@@ -135,7 +135,7 @@ const loginUser = async (req, res, next) => {
 
     // Recherche dans le BDD un utilisateur par son email
     const [user] = await Db.query(
-        'SELECT `id`, `email`, `pass_word` FROM `users` WHERE `users`.`email` = ?',
+        'SELECT `id`, `email`, `pass_word`, `user_role` FROM `users` WHERE `users`.`email` = ?',
         {
             replacements: [req.body.email],
             type: QueryTypes.SELECT
@@ -159,8 +159,12 @@ const loginUser = async (req, res, next) => {
     // Si tout est ok, envoi de la réponse : id et token
     res.status(200).json({
         userId: user.id,
+        user_role: user.user_role,
         token: jwt.sign(
-            { userId: user.id },
+            {
+                userId: user.id,
+                user_role: user.user_role
+            },
             process.env.WEB_TOKEN,
             { expiresIn: "24h" }
         )
