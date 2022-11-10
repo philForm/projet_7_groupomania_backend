@@ -8,6 +8,7 @@ const { createPost, sendAllPosts, modifyPost, deletePost, postUserFind } = requi
 const postRouter = Router();
 
 postRouter.post("/", auth, multer, createPost);
+// postRouter.post("/like/:id", auth, "");
 
 postRouter.get("/", sendAllPosts);
 postRouter.get("/:id", postUserFind);

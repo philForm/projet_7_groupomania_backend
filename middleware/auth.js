@@ -17,7 +17,6 @@ module.exports = (req, res, next) => {
         req.auth = { userId };
         console.log('=============== req.auth');
         console.log(req.auth);
-        const { post } = req;
         console.log('=============== req.body.userId');
         console.log(req.body.userId)
 

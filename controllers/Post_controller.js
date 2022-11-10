@@ -113,7 +113,7 @@ const postUserFind = async (req, res, next) => {
 const modifyPost = async (req, res, next) => {
 
     /// Tableau qui récupère les Ids renvoyés par idOfBd().
-    const tab = idOfBd(req).map(el => el);
+    const tab = (await idOfBd(req)).map(el => el);
     // console.log(`tab : ${tab}`);
 
     /// Id de la requête
@@ -144,11 +144,14 @@ const modifyPost = async (req, res, next) => {
             // ------------------------------------------
             // Récupération du nom de l'image à partir de l'URL dans la BDD :
             const image = postBDD.post_picture.split('/images/')[1];
-            // Suppression de l'ancienne image du dossier images :
-            fs.unlink(`images/${image}`, (err) => {
-                if (err) throw err;
-                console.log(`Image ${image} supprimée de la BDD!`);
-            });
+            // Si une image existe elle est supprimée du dossier :
+            if (image) {
+                // Suppression de l'ancienne image du dossier images :
+                fs.unlink(`images/${image}`, (err) => {
+                    if (err) throw err;
+                    console.log(`Image ${image} supprimée de la BDD!`);
+                });
+            }
             // ------------------------------------------
             // Envoi de l'URL de la nouvelle image dans la BDD :
             postPicture = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
