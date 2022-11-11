@@ -127,7 +127,7 @@ const modifyPost = async (req, res, next) => {
     let postPicture = ""
     console.log(req.body.post);
 
-    /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié
+    /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié  :
     if (result != undefined) {
 
         // On sélectionne dans la BDD les éléments visés par la modification :
@@ -227,7 +227,7 @@ const deletePost = async (req, res, next) => {
             });
         }
         // Suppression du post :
-        await Db.query(`
+        await Db.query(`,  
             DELETE FROM posts
             WHERE id = ?;`,
             {
@@ -241,10 +241,92 @@ const deletePost = async (req, res, next) => {
     } else
         res.status(404).json({ message: "Post introuvable !" });
 
+};
+
+const postLiked = async (req, res, next) => {
+
+    console.log("============== req.body");
+    console.log(req.body);
+    const { like, userId } = req.body
+    console.log("============== req.params");
+    console.log(req.params);
+    console.log("============== req.auth dans postLiked")
+    console.log(req.auth)
+    const postId = parseInt(req.params.id)
+
+    // Vérification que l'utilisateur n'a pas déjà liked le post :
+    const [likeBdd] = await Db.query(
+        `SELECT * FROM likes WHERE post_id=? AND user_id=?;`,
+        {
+            replacements: [postId, userId],
+            type: QueryTypes.SELECT
+        }
+    );
+    console.log("=========== likeBdd")
+    console.log(likeBdd)
+
+    // Si l'utilisateur n'a pas encore liked, on enregistre son like :
+    if (likeBdd == undefined) {
+        await Db.query(
+            `INSERT INTO likes (post_like, post_id, user_id) VALUES (?,?,?);`,
+            {
+                replacements: [like, postId, userId],
+                type: QueryTypes.INSERT
+            }
+        );
+        countLike(like, postId, res);
+    }
+    // Si l'utilisateur a déjà liked, on observe son vôte dans la BDD :
+    else {
+        console.log("*****************")
+        console.log(likeBdd.post_like.readInt8())
+        // Si le vôte de la BDD est différent du nouveau vôte, on modifie dans la BDD, et on met à jour le décompte des like et dislike :
+        if (likeBdd.post_like.readInt8() !== like) {
+            console.log("vote différent !!!!")
+            await Db.query(`
+                UPDATE likes
+                SET post_like = ?
+                WHERE user_id = ? AND post_id = ?;`,
+                {
+                    replacements: [like, userId, postId],
+                    type: QueryTypes.INSERT
+                }
+            );
+
+            countLike(like, postId, res);
+            // countLike(1, postId, res);
+
+        }
+        // Si le vôte est identique, on supprime l'évaluation :
+        else {
+            await Db.query(`
+                DELETE FROM likes 
+                WHERE user_id = ? AND post_id = ?;`,
+                {
+                    replacements: [userId, postId],
+                    type: QueryTypes.INSERT
+                }
+            );
+
+        };
+    };
+};
+
+/**
+ * Compte les like identiques pour un post :
+ */
+const countLike = async (like, postId, res) => {
+    let [count] = await Db.query(`
+        SELECT COUNT(*) FROM likes 
+        WHERE post_like=? AND post_id=?;`,
+        {
+            replacements: [like, postId],
+            type: QueryTypes.SELECT
+        }
+    );
+
+    res.send({ count, like, postId });
+};
 
 
-
-}
-
-
-module.exports = { createPost, sendAllPosts, modifyPost, deletePost, postUserFind };
+module.exports = { createPost, sendAllPosts, modifyPost, deletePost, postUserFind, postLiked };
