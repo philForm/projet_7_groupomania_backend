@@ -8,7 +8,7 @@ const { createPost, sendAllPosts, modifyPost, deletePost, postUserFind, postLike
 const postRouter = Router();
 
 postRouter.post("/", auth, multer, createPost);
-postRouter.post("/:id/like", auth, postLiked);
+postRouter.post("/like", auth, postLiked);
 
 postRouter.get("/", sendAllPosts);
 postRouter.get("/:id", postUserFind);

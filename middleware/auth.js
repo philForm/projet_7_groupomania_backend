@@ -12,6 +12,7 @@ module.exports = (req, res, next) => {
         );
 
         const userId = decodedToken.userId;
+        const role = decodedToken.user_role.data[0];
         console.log('=============== userId')
         console.log(userId)
         req.auth = { userId };
@@ -19,6 +20,8 @@ module.exports = (req, res, next) => {
         console.log(req.auth);
         console.log('=============== req.body.userId');
         console.log(req.body.userId)
+        console.log('=============== role');
+        console.log(role);
 
         if ((req.body.userId && (req.body.userId !== userId))) {
             throw "User Id non valable !";

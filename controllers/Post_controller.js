@@ -109,6 +109,7 @@ const postUserFind = async (req, res, next) => {
     })
 };
 
+
 /// Modifie un Post
 const modifyPost = async (req, res, next) => {
 
@@ -123,73 +124,26 @@ const modifyPost = async (req, res, next) => {
     const result = tab[0];
     console.log(`result : ${result}`)
 
+    // const { post, postPicture } = await req.body;
     const { post } = await req.body;
-    let postPicture = ""
+    const postPicture = ""
     console.log(req.body.post);
 
-    /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié  :
+    /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié
     if (result != undefined) {
 
-        // On sélectionne dans la BDD les éléments visés par la modification :
-        const [postBDD] = await Db.query(`
-            SELECT post, post_picture FROM posts WHERE id=?;`,
+        await Db.query(`
+            UPDATE posts
+            SET post = ?, post_picture = ?
+            WHERE id = ?;`,
             {
-                replacements: [postId],
-                type: QueryTypes.SELECT
+                replacements: [post, postPicture, postId],
+                type: QueryTypes.PUT
             }
-        );
-        // On vérifie si une image est présente dans la requête :
-        if (req.file != undefined) {
-            console.log("l'image existe");
-            // ------------------------------------------
-            // Récupération du nom de l'image à partir de l'URL dans la BDD :
-            const image = postBDD.post_picture.split('/images/')[1];
-            // Si une image existe elle est supprimée du dossier :
-            if (image) {
-                // Suppression de l'ancienne image du dossier images :
-                fs.unlink(`images/${image}`, (err) => {
-                    if (err) throw err;
-                    console.log(`Image ${image} supprimée de la BDD!`);
-                });
-            }
-            // ------------------------------------------
-            // Envoi de l'URL de la nouvelle image dans la BDD :
-            postPicture = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
-            await Db.query(`
-                UPDATE posts
-                SET post_picture = ?
-                WHERE id = ?;`,
-                {
-                    replacements: [postPicture, postId],
-                    type: QueryTypes.PUT
-                }
-            ).then(() => {
-                res.status(201).json({ message: "L'image a été modifiée !" });
-            })
-                .catch(error => res.status(500).json({ error }));
-        }
-        // Vérification de la modification du messsage :
-        if (postBDD.post != req.body.post) {
-            console.log("post modifié !")
-
-            await Db.query(`
-                UPDATE posts
-                SET post = ?
-                WHERE id = ?;`,
-                {
-                    replacements: [req.body.post, postId],
-                    type: QueryTypes.PUT
-                }
-            ).then(() => {
-                res.status(201).json({ message: "Le message a été modifié !" });
-            })
-                .catch(error => res.status(500).json({ error }));
-
-        };
-
-        console.log('--------------------- postBDD.post')
-        console.log(postBDD.post)
-
+        ).then(() => {
+            res.status(201).json({ message: "Message modifié !" });
+        })
+            .catch(error => res.status(500).json({ error }));
     } else
         res.status(404).json({ message: "Post introuvable !" });
 }
@@ -227,7 +181,7 @@ const deletePost = async (req, res, next) => {
             });
         }
         // Suppression du post :
-        await Db.query(`,  
+        await Db.query(`
             DELETE FROM posts
             WHERE id = ?;`,
             {
@@ -241,19 +195,19 @@ const deletePost = async (req, res, next) => {
     } else
         res.status(404).json({ message: "Post introuvable !" });
 
-};
+}
 
+/**
+ * like et dislike :
+ */
 const postLiked = async (req, res, next) => {
 
     console.log("============== req.body");
     console.log(req.body);
-    const { like, userId } = req.body
-    console.log("============== req.params");
-    console.log(req.params);
+    const { like, postId } = req.body
     console.log("============== req.auth dans postLiked")
     console.log(req.auth)
-    const postId = parseInt(req.params.id)
-
+    const userId = req.auth.userId
     // Vérification que l'utilisateur n'a pas déjà liked le post :
     const [likeBdd] = await Db.query(
         `SELECT * FROM likes WHERE post_id=? AND user_id=?;`,
@@ -274,7 +228,7 @@ const postLiked = async (req, res, next) => {
                 type: QueryTypes.INSERT
             }
         );
-        countLike(like, postId, res);
+
     }
     // Si l'utilisateur a déjà liked, on observe son vôte dans la BDD :
     else {
@@ -286,14 +240,14 @@ const postLiked = async (req, res, next) => {
             await Db.query(`
                 UPDATE likes
                 SET post_like = ?
-                WHERE user_id = ? AND post_id = ?;`,
+                WHERE id = ?;`,
                 {
-                    replacements: [like, userId, postId],
+                    replacements: [like, likeBdd.id],
                     type: QueryTypes.INSERT
                 }
             );
 
-            countLike(like, postId, res);
+            // countLike(like, postId, res);
             // countLike(1, postId, res);
 
         }
@@ -301,32 +255,32 @@ const postLiked = async (req, res, next) => {
         else {
             await Db.query(`
                 DELETE FROM likes 
-                WHERE user_id = ? AND post_id = ?;`,
+                WHERE id = ?;`,
                 {
-                    replacements: [userId, postId],
-                    type: QueryTypes.INSERT
+                    replacements: [likeBdd.id],
+                    type: QueryTypes.DELETE
                 }
             );
 
         };
     };
-};
 
-/**
- * Compte les like identiques pour un post :
- */
-const countLike = async (like, postId, res) => {
-    let [count] = await Db.query(`
-        SELECT COUNT(*) FROM likes 
-        WHERE post_like=? AND post_id=?;`,
+    // 
+    let [postLikes] = await Db.query(`
+        SELECT A.post_id, A.like1, B.like0 FROM 
+        (SELECT COUNT(*) as like1, post_id FROM likes WHERE post_id=? AND post_like=1) A
+        INNER JOIN
+        (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_id=? AND post_like=0) B
+        ON A.post_id = B.post_id;`,
         {
-            replacements: [like, postId],
+            replacements: [postId, postId],
             type: QueryTypes.SELECT
         }
     );
-
-    res.send({ count, like, postId });
+    console.log('=============== postLikes')
+    console.log(postLikes);
+    res.send(postLikes);
 };
 
 
-module.exports = { createPost, sendAllPosts, modifyPost, deletePost, postUserFind, postLiked };
+module.exports = { createPost, sendAllPosts, modifyPost, postUserFind, deletePost, postLiked };
