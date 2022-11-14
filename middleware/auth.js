@@ -15,7 +15,7 @@ module.exports = (req, res, next) => {
         const role = decodedToken.user_role.data[0];
         console.log('=============== userId')
         console.log(userId)
-        req.auth = { userId };
+        req.auth = { userId, role };
         console.log('=============== req.auth');
         console.log(req.auth);
         console.log('=============== req.body.userId');

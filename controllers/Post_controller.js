@@ -54,10 +54,17 @@ const sendAllPosts = async (req, res, next) => {
     // );
 
     const [posts2] = await Db.query(`
-        SELECT email, user_picture, post, post_picture, posts.id, posts.user_id, posts.createdAt 
-        FROM users 
-        INNER JOIN posts 
-        WHERE users.id = posts.user_id AND is_censored = 0
+        SELECT email, user_picture, post, post_picture, posts.id, posts.user_id, posts.createdAt,
+        IFNULL(B.like1, 0) AS like1, IFNULL(C.like0, 0) AS like0
+        FROM posts 
+        INNER JOIN users 
+        ON users.id = posts.user_id AND is_censored = 0
+        LEFT OUTER JOIN
+        (SELECT COUNT(*) as like1, post_id FROM likes WHERE post_like=1) B
+        ON posts.id = B.post_id
+        LEFT OUTER JOIN
+        (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_like=0) C
+        ON posts.id = C.post_id
         ORDER BY posts.createdAt DESC;
         `
     )
@@ -124,26 +131,73 @@ const modifyPost = async (req, res, next) => {
     const result = tab[0];
     console.log(`result : ${result}`)
 
-    // const { post, postPicture } = await req.body;
     const { post } = await req.body;
-    const postPicture = ""
+    let postPicture = ""
     console.log(req.body.post);
 
-    /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié
+    /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié  :
     if (result != undefined) {
 
-        await Db.query(`
-            UPDATE posts
-            SET post = ?, post_picture = ?
-            WHERE id = ?;`,
+        // On sélectionne dans la BDD les éléments visés par la modification :
+        const [postBDD] = await Db.query(`
+            SELECT post, post_picture FROM posts WHERE id=?;`,
             {
-                replacements: [post, postPicture, postId],
-                type: QueryTypes.PUT
+                replacements: [postId],
+                type: QueryTypes.SELECT
             }
-        ).then(() => {
-            res.status(201).json({ message: "Message modifié !" });
-        })
-            .catch(error => res.status(500).json({ error }));
+        );
+        // On vérifie si une image est présente dans la requête :
+        if (req.file != undefined) {
+            console.log("l'image existe");
+            // ------------------------------------------
+            // Récupération du nom de l'image à partir de l'URL dans la BDD :
+            const image = postBDD.post_picture.split('/images/')[1];
+            // Si une image existe elle est supprimée du dossier :
+            if (image) {
+                // Suppression de l'ancienne image du dossier images :
+                fs.unlink(`images/${image}`, (err) => {
+                    if (err) throw err;
+                    console.log(`Image ${image} supprimée de la BDD!`);
+                });
+            }
+            // ------------------------------------------
+            // Envoi de l'URL de la nouvelle image dans la BDD :
+            postPicture = `${req.protocol}://${req.get('host')}/images/${req.file.filename}`;
+            await Db.query(`
+                UPDATE posts
+                SET post_picture = ?
+                WHERE id = ?;`,
+                {
+                    replacements: [postPicture, postId],
+                    type: QueryTypes.PUT
+                }
+            ).then(() => {
+                res.status(201).json({ message: "L'image a été modifiée !" });
+            })
+                .catch(error => res.status(500).json({ error }));
+        }
+        // Vérification de la modification du messsage :
+        if (postBDD.post != req.body.post) {
+            console.log("post modifié !")
+
+            await Db.query(`
+                UPDATE posts
+                SET post = ?
+                WHERE id = ?;`,
+                {
+                    replacements: [req.body.post, postId],
+                    type: QueryTypes.PUT
+                }
+            ).then(() => {
+                res.status(201).json({ message: "Le message a été modifié !" });
+            })
+                .catch(error => res.status(500).json({ error }));
+
+        };
+
+        console.log('--------------------- postBDD.post')
+        console.log(postBDD.post)
+
     } else
         res.status(404).json({ message: "Post introuvable !" });
 }
@@ -267,13 +321,16 @@ const postLiked = async (req, res, next) => {
 
     // 
     let [postLikes] = await Db.query(`
-        SELECT A.post_id, A.like1, B.like0 FROM 
-        (SELECT COUNT(*) as like1, post_id FROM likes WHERE post_id=? AND post_like=1) A
-        INNER JOIN
-        (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_id=? AND post_like=0) B
-        ON A.post_id = B.post_id;`,
+        SELECT A.post_id, IFNULL(B.like1, 0) AS like1, IFNULL(C.like0, 0) AS like0 FROM
+        (SELECT ? as post_id) A
+        LEFT OUTER JOIN
+        (SELECT COUNT(*) as like1, post_id FROM likes WHERE post_id=? AND post_like=1) B
+        ON A.post_id = B.post_id
+        LEFT OUTER JOIN
+        (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_id=? AND post_like=0) C
+        ON A.post_id = C.post_id;`,
         {
-            replacements: [postId, postId],
+            replacements: [postId, postId, postId],
             type: QueryTypes.SELECT
         }
     );
