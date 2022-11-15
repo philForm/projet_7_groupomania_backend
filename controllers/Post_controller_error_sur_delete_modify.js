@@ -54,17 +54,10 @@ const sendAllPosts = async (req, res, next) => {
     // );
 
     const [posts2] = await Db.query(`
-        SELECT email, user_picture, post, post_picture, posts.id, posts.user_id, posts.createdAt,
-        IFNULL(B.like1, 0) AS like1, IFNULL(C.like0, 0) AS like0
-        FROM posts 
-        INNER JOIN users 
-        ON users.id = posts.user_id AND is_censored = 0
-        LEFT OUTER JOIN
-        (SELECT COUNT(*) as like1, post_id FROM likes WHERE post_like=1) B
-        ON posts.id = B.post_id
-        LEFT OUTER JOIN
-        (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_like=0) C
-        ON posts.id = C.post_id
+        SELECT email, user_picture, post, post_picture, posts.id, posts.user_id, posts.createdAt 
+        FROM users 
+        INNER JOIN posts 
+        WHERE users.id = posts.user_id AND is_censored = 0
         ORDER BY posts.createdAt DESC;
         `
     )
@@ -116,7 +109,6 @@ const postUserFind = async (req, res, next) => {
     })
 };
 
-
 /// Modifie un Post
 const modifyPost = async (req, res, next) => {
 
@@ -134,9 +126,6 @@ const modifyPost = async (req, res, next) => {
     const { post } = await req.body;
     let postPicture = ""
     console.log(req.body.post);
-
-    console.log('=============== req.auth.role');
-    console.log(req.auth.role);
 
     /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié  :
     if (result != undefined) {
@@ -228,7 +217,6 @@ const deletePost = async (req, res, next) => {
         console.log(imageUrl)
         // Vérification de l'existence de l'URL de l'image :
         if (imageUrl.post_picture) {
-
             // Récupération du nom de l'image à partir de l'URL :
             const image = imageUrl.post_picture.split('/images/')[1];
             // Suppression de l'image :
@@ -238,7 +226,7 @@ const deletePost = async (req, res, next) => {
             });
         }
         // Suppression du post :
-        await Db.query(`
+        await Db.query(`,  
             DELETE FROM posts
             WHERE id = ?;`,
             {
@@ -252,7 +240,7 @@ const deletePost = async (req, res, next) => {
     } else
         res.status(404).json({ message: "Post introuvable !" });
 
-}
+};
 
 /**
  * like et dislike :
@@ -324,16 +312,13 @@ const postLiked = async (req, res, next) => {
 
     // 
     let [postLikes] = await Db.query(`
-        SELECT A.post_id, IFNULL(B.like1, 0) AS like1, IFNULL(C.like0, 0) AS like0 FROM
-        (SELECT ? as post_id) A
-        LEFT OUTER JOIN
-        (SELECT COUNT(*) as like1, post_id FROM likes WHERE post_id=? AND post_like=1) B
-        ON A.post_id = B.post_id
-        LEFT OUTER JOIN
-        (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_id=? AND post_like=0) C
-        ON A.post_id = C.post_id;`,
+        SELECT A.post_id, A.like1, B.like0 FROM 
+        (SELECT COUNT(*) as like1, post_id FROM likes WHERE post_id=? AND post_like=1) A
+        INNER JOIN
+        (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_id=? AND post_like=0) B
+        ON A.post_id = B.post_id;`,
         {
-            replacements: [postId, postId, postId],
+            replacements: [postId, postId],
             type: QueryTypes.SELECT
         }
     );
@@ -342,5 +327,21 @@ const postLiked = async (req, res, next) => {
     res.send(postLikes);
 };
 
+// /**
+//  * Compte les like identiques pour un post :
+//  */
+// const countLike = async (like, postId, res) => {
+//     let [count] = await Db.query(`
+//         SELECT COUNT(*) FROM likes 
+//         WHERE post_like=? AND post_id=?;`,
+//         {
+//             replacements: [like, postId],
+//             type: QueryTypes.SELECT
+//         }
+//     );
 
-module.exports = { createPost, sendAllPosts, modifyPost, postUserFind, deletePost, postLiked };
+//     res.send({ count, like, postId });
+// };
+
+
+module.exports = { createPost, sendAllPosts, modifyPost, deletePost, postUserFind, postLiked };

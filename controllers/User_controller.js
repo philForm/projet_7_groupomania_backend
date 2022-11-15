@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 
 const Db = require("../db/db.js");
 
+const avatarImg = "avatars/avatar-anonyme.png";
+
 // sélectionne tous les utilisateurs dans la BDD
 const getAllUsers = async (req, res, next) => {
     const [users] = await Db.query("SELECT * FROM users");
@@ -40,11 +42,11 @@ const getOneUser = async (req, res, next) => {
  */
 const signupUser = async (req, res, next) => {
     console.log(req.body)
-    // Destructuration du corps de la requête
+    // Destructuration du corps de la requête :
     const { firstname, lastname, email, picture } = await req.body;
     // Hachage du mot de passe
     const hash = await bcrypt.hash(req.body.password, 10);
-    // Recherche d'un doublon de l'email dans la base de données
+    // Recherche d'un doublon de l'email dans la base de données :
     const emailsDb = await Db.query(
         `SELECT email FROM users WHERE email = ?`,
         {
@@ -52,17 +54,21 @@ const signupUser = async (req, res, next) => {
             type: QueryTypes.SELECT
         }
     );
-    // Renvoie 'true' si la condition est vérifiée
+
+    // Avatar anonyme :
+    let avatar = `${req.protocol}://${req.get('host')}/images/${avatarImg}`;
+
+    // Renvoie 'true' si la condition est vérifiée :
     const [tab] = emailsDb.map(el => el.email === email)
 
     console.log(tab)
-    // Création de l'utilisateur si son email est unique 
+    // Création de l'utilisateur si son email est unique :
     if (!tab) {
 
         Db.query(`
                 INSERT INTO users (firstname, lastname, pass_word, email, user_picture) VALUES (?,?,?,?,?);`,
             {
-                replacements: [firstname, lastname, hash, email, picture],
+                replacements: [firstname, lastname, hash, email, avatar],
                 type: QueryTypes.INSERT
             }
         ).then(() => {
@@ -101,10 +107,12 @@ const addUserAvatar = async (req, res, next) => {
             // Récupération du nom de l'image à partir de l'URL dans la BDD :
             const avatar = picture.user_picture.split('/images/')[1];
             // Suppression de l'ancienne image du dossier images :
-            fs.unlink(`images/${avatar}`, (err) => {
-                if (err) throw err;
-                console.log(`Avatar ${avatar} supprimée de la BDD!`);
-            });
+            if (avatar != avatarImg) {
+                fs.unlink(`images/${avatar}`, (err) => {
+                    if (err) throw err;
+                    console.log(`Avatar ${avatar} supprimée de la BDD!`);
+                });
+            }
 
         }
         // Envoi de l'URL du nouvel avatar dans la BDD :
