@@ -133,10 +133,15 @@ const modifyPost = async (req, res, next) => {
 
     const { post } = await req.body;
     let postPicture = ""
+
+    console.log('=============== req.body.post in modify');
     console.log(req.body.post);
 
     console.log('=============== req.auth.role');
     console.log(req.auth.role);
+
+    console.log('=============== req.body.userId in modify');
+    console.log(req.body.userId)
 
     /// Si dans la BDD un Id correspond à l'Id de la requête, le message est modifié  :
     if (result != undefined) {

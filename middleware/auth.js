@@ -19,6 +19,7 @@ module.exports = (req, res, next) => {
         console.log('=============== req.auth');
         console.log(req.auth);
         console.log('=============== req.body.userId');
+        // let { userId } = req.body.userId
         console.log(req.body.userId)
         console.log('=============== role');
         console.log(role);
@@ -27,6 +28,7 @@ module.exports = (req, res, next) => {
             throw "User Id non valable !";
         } else {
             // res.status(201).json({ 'userId': userId })
+            console.log("Dans else : ", req.body.userId);
             next();
         }
     } catch (error) {

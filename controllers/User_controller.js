@@ -2,6 +2,7 @@ const { QueryTypes } = require("sequelize");
 const fs = require("fs");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const securePassword = require('../utils/secure_password')
 
 const Db = require("../db/db.js");
 
@@ -44,41 +45,54 @@ const signupUser = async (req, res, next) => {
     console.log(req.body)
     // Destructuration du corps de la requête :
     const { firstname, lastname, email, picture } = await req.body;
-    // Hachage du mot de passe
-    const hash = await bcrypt.hash(req.body.password, 10);
-    // Recherche d'un doublon de l'email dans la base de données :
-    const emailsDb = await Db.query(
-        `SELECT email FROM users WHERE email = ?`,
-        {
-            replacements: [email],
-            type: QueryTypes.SELECT
-        }
-    );
 
-    // Avatar anonyme :
-    let avatar = `${req.protocol}://${req.get('host')}/images/${avatarImg}`;
-
-    // Renvoie 'true' si la condition est vérifiée :
-    const [tab] = emailsDb.map(el => el.email === email)
-
-    console.log(tab)
-    // Création de l'utilisateur si son email est unique :
-    if (!tab) {
-
-        Db.query(`
-                INSERT INTO users (firstname, lastname, pass_word, email, user_picture) VALUES (?,?,?,?,?);`,
+    // Vérification de la complexité du mot de passe :
+    if (securePassword(req.body.password)) {
+        // Hachage du mot de passe
+        const hash = await bcrypt.hash(req.body.password, 10);
+        // Recherche d'un doublon de l'email dans la base de données :
+        const emailsDb = await Db.query(
+            `SELECT email FROM users WHERE email = ?`,
             {
-                replacements: [firstname, lastname, hash, email, avatar],
-                type: QueryTypes.INSERT
+                replacements: [email],
+                type: QueryTypes.SELECT
             }
-        ).then(() => {
-            res.status(201).json({ message: "Utilisateur créé !" });
-        })
-            .catch(error => res.status(500).json({ error }));
+        );
+
+        // Renvoie 'true' si la condition est vérifiée :
+        const [tab] = emailsDb.map(el => el.email === email);
+
+        // Avatar anonyme :
+        let avatar = `${req.protocol}://${req.get('host')}/images/${avatarImg}`;
+
+
+        console.log(tab)
+        // Création de l'utilisateur si son email est unique :
+        if (!tab) {
+
+            Db.query(`
+                    INSERT INTO users (firstname, lastname, pass_word, email, user_picture) VALUES (?,?,?,?,?);`,
+                {
+                    replacements: [firstname, lastname, hash, email, avatar],
+                    type: QueryTypes.INSERT
+                }
+            ).then(() => {
+                res.status(201).json({ message: "Utilisateur créé !" });
+            })
+                .catch(error => res.status(500).json({ error }));
+        } else {
+            console.log("l'email existe déjà !")
+            res.status(200).json({ message: "L'email existe déjà !" });
+        }
     } else {
-        console.log("l'email existe déjà !")
-        res.status(200).json({ message: "L'email existe déjà !" });
-    }
+        res.status(200).json({
+            message2: {
+                pass: "Le mot de passe n'est pas assez sécurisé !",
+                pass2: "Entrez au minimum 10 caractères des minuscules, majuscules, des chiffres, et des caractères spéciaux !"
+            }
+        });
+    };
+
 
 };
 
