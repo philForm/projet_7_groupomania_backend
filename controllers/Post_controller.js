@@ -53,22 +53,24 @@ const sendAllPosts = async (req, res, next) => {
     //     `
     // );
 
+    // IFNULL(B.like1, 0) : renvoie la valeur de like1 et 0 si like1 est NULL
+    // 
     const [posts2] = await Db.query(`
         SELECT email, user_picture, post, post_picture, posts.id, posts.user_id, posts.createdAt,
-        IFNULL(B.like1, 0) AS like1, IFNULL(C.like0, 0) AS like0
+        IFNULL(B.like1, 0) AS like1, IFNULL(C.like0, 0) AS like0 
         FROM posts 
         INNER JOIN users 
         ON users.id = posts.user_id AND is_censored = 0
         LEFT OUTER JOIN
-        (SELECT COUNT(*) as like1, post_id FROM likes WHERE post_like=1) B
+        (SELECT COUNT(*) as like1, post_id FROM likes WHERE post_like=1 GROUP BY post_id) B
         ON posts.id = B.post_id
         LEFT OUTER JOIN
-        (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_like=0) C
+        (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_like=0 GROUP BY post_id) C
         ON posts.id = C.post_id
         ORDER BY posts.createdAt DESC;
         `
     )
-    console.log(posts2);
+    console.log("post2 ===========", posts2);
     res.send(posts2);
 
 };

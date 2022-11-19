@@ -88,7 +88,7 @@ const signupUser = async (req, res, next) => {
         res.status(200).json({
             message2: {
                 pass: "Le mot de passe n'est pas assez sécurisé !",
-                pass2: "Entrez au minimum 10 caractères des minuscules, majuscules, des chiffres, et des caractères spéciaux !"
+                pass2: "Entrez au minimum 10 caractères, des minuscules, majuscules, des chiffres, et des caractères spéciaux !"
             }
         });
     };
