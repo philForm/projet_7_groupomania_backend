@@ -118,8 +118,9 @@ const postUserFind = async (req, res, next) => {
     })
 };
 
-
-/// Modifie un Post
+/**
+ * Modifie un Post
+ */
 const modifyPost = async (req, res, next) => {
 
     /// Tableau qui récupère les Ids renvoyés par idOfBd().
@@ -131,9 +132,12 @@ const modifyPost = async (req, res, next) => {
     console.log(`postId : ${postId}`)
     /// Id de la BDD
     const result = tab[0];
-    console.log(`result : ${result}`)
+    console.log(`result : ${result}`);
 
-    const { post } = await req.body;
+    const userId = req.auth.userId;
+    const role = req.auth.role;
+
+    // const { post } = await req.body;
     let postPicture = ""
 
     console.log('=============== req.body.post in modify');
@@ -150,14 +154,18 @@ const modifyPost = async (req, res, next) => {
 
         // On sélectionne dans la BDD les éléments visés par la modification :
         const [postBDD] = await Db.query(`
-            SELECT post, post_picture FROM posts WHERE id=?;`,
+            SELECT post, post_picture FROM posts 
+            WHERE id = ? 
+            AND (user_id = ? OR ? = 1);`,
             {
-                replacements: [postId],
+                replacements: [postId, userId, role],
                 type: QueryTypes.SELECT
             }
         );
+        // Création d'un OBJET vide qui recevra les réponses :
+        let resObj = {}
         // On vérifie si une image est présente dans la requête :
-        if (req.file != undefined) {
+        if (postBDD && req.file != undefined) {
             console.log("l'image existe");
             // ------------------------------------------
             // Récupération du nom de l'image à partir de l'URL dans la BDD :
@@ -182,12 +190,12 @@ const modifyPost = async (req, res, next) => {
                     type: QueryTypes.PUT
                 }
             ).then(() => {
-                res.status(201).json({ message: "L'image a été modifiée !" });
+                resObj.message1 = "L'image a été modifiée !";
             })
                 .catch(error => res.status(500).json({ error }));
         }
-        // Vérification de la modification du messsage :
-        if (postBDD.post != req.body.post) {
+        // Vérification de la modification du message :
+        if (postBDD && postBDD.post != req.body.post) {
             console.log("post modifié !")
 
             await Db.query(`
@@ -199,42 +207,50 @@ const modifyPost = async (req, res, next) => {
                     type: QueryTypes.PUT
                 }
             ).then(() => {
-                res.status(201).json({ message: "Le message a été modifié !" });
+                resObj.message2 = "Le message a été modifié !";
             })
                 .catch(error => res.status(500).json({ error }));
 
         };
-
-        console.log('--------------------- postBDD.post')
-        console.log(postBDD.post)
-
+        Object.keys(resObj).length !== 0 ?
+            res.status(201).json(resObj)
+            :
+            res.status(201).json({ message: "Aucune modification !" });
     } else
         res.status(404).json({ message: "Post introuvable !" });
 }
 
-// Supprime un Post
+/**
+ * Supprime un Post
+ */
 const deletePost = async (req, res, next) => {
 
-    /// Tableau qui récupère les Ids renvoyés par idOfBd().
+    /// Tableau qui récupère les Ids renvoyés par idOfBd() :
     const tab = (await idOfBd(req)).map(el => el);
-    /// Id de la requête
+    /// Id de la requête :
     const postId = tab[1];
-    /// Id de la BDD
+    /// Id de la BDD :
     const result = tab[0];
+
+    const userId = req.auth.userId;
+    const role = req.auth.role;
 
     /// Si dans la BDD un Id correspond à l'Id de la requête, le message est supprimé.
     if (result != undefined) {
         // Sélection de l'URL de l'image à supprimer du dossier images :
         const [imageUrl] = await Db.query(`
-            SELECT post_picture FROM posts WHERE id = ?;`,
+            SELECT post_picture 
+            FROM posts WHERE id = ? 
+            AND (user_id = ? OR ? = 1);`,
             {
-                replacements: [postId],
+                replacements: [postId, userId, role],
                 type: QueryTypes.SELECT
             }
         )
+        console.log("============ imageUrl")
         console.log(imageUrl)
         // Vérification de l'existence de l'URL de l'image :
-        if (imageUrl.post_picture) {
+        if (imageUrl && imageUrl.post_picture) {
 
             // Récupération du nom de l'image à partir de l'URL :
             const image = imageUrl.post_picture.split('/images/')[1];
@@ -247,13 +263,25 @@ const deletePost = async (req, res, next) => {
         // Suppression du post :
         await Db.query(`
             DELETE FROM posts
-            WHERE id = ?;`,
+            WHERE id = ? 
+            AND (user_id = ? OR ? = 1);`,
             {
-                replacements: [postId],
+                replacements: [postId, userId, role],
                 type: QueryTypes.DELETE
             }
-        ).then(() => {
-            res.status(201).json({ message: "Message supprimé !" });
+        ).then(async () => {
+            let [post] = await Db.query(`
+                SELECT id FROM posts WHERE id = ?;`,
+                {
+                    replacements: [postId],
+                    type: QueryTypes.SELECT
+                }
+            )
+            console.log("post", post)
+            if (!post)
+                res.status(201).json({ message: "Message supprimé !" });
+            else
+                res.status(401).json({ message: "Vous n'êtes pas autorisés à supprimer ce message !" });
         })
             .catch(error => res.status(500).json({ error }));
     } else
@@ -274,7 +302,7 @@ const postLiked = async (req, res, next) => {
     const userId = req.auth.userId
     // Vérification que l'utilisateur n'a pas déjà liked le post :
     const [likeBdd] = await Db.query(
-        `SELECT * FROM likes WHERE post_id=? AND user_id=?;`,
+        `SELECT * FROM likes WHERE post_id = ? AND user_id = ?;`,
         {
             replacements: [postId, userId],
             type: QueryTypes.SELECT
@@ -307,7 +335,7 @@ const postLiked = async (req, res, next) => {
                 WHERE id = ?;`,
                 {
                     replacements: [like, likeBdd.id],
-                    type: QueryTypes.INSERT
+                    type: QueryTypes.PUT
                 }
             );
 
