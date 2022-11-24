@@ -13,22 +13,11 @@ module.exports = (req, res, next) => {
 
         const userId = decodedToken.userId;
         const role = decodedToken.user_role.data[0];
-        console.log('=============== userId')
-        console.log(userId)
         req.auth = { userId, role };
-        console.log('=============== req.auth');
-        console.log(req.auth);
-        console.log('=============== req.body.userId');
-        // let { userId } = req.body.userId
-        console.log(req.body.userId)
-        console.log('=============== role');
-        console.log(role);
 
         if ((req.body.userId && (req.body.userId !== userId))) {
             throw "User Id non valable !";
         } else {
-            // res.status(201).json({ 'userId': userId })
-            console.log("Dans else : ", req.body.userId);
             next();
         }
     } catch (error) {

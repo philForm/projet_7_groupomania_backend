@@ -4,7 +4,6 @@ const users = require("./routers/User_router.js");
 const posts = require("./routers/Posts_router.js");
 
 const Db = require("./db/db.js");
-// console.log(Db)
 
 const path = require("path");
 

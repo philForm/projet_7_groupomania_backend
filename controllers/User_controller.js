@@ -42,7 +42,6 @@ const getOneUser = async (req, res, next) => {
  * Enregistrement d'un utilisateur
  */
 const signupUser = async (req, res, next) => {
-    console.log(req.body)
     // Destructuration du corps de la requête :
     const { firstname, lastname, email, picture } = await req.body;
 
@@ -65,8 +64,6 @@ const signupUser = async (req, res, next) => {
         // Avatar anonyme :
         let avatar = `${req.protocol}://${req.get('host')}/images/${avatarImg}`;
 
-
-        console.log(tab)
         // Création de l'utilisateur si son email est unique :
         if (!tab) {
 
@@ -81,7 +78,6 @@ const signupUser = async (req, res, next) => {
             })
                 .catch(error => res.status(500).json({ error }));
         } else {
-            console.log("l'email existe déjà !")
             res.status(200).json({ message: "L'email existe déjà !" });
         }
     } else {
@@ -100,9 +96,6 @@ const signupUser = async (req, res, next) => {
  * Ajout d'un avatar à l'utilisateur
  */
 const addUserAvatar = async (req, res, next) => {
-
-    console.log("========== req.file")
-    console.log(req)
 
     // Si une image est envoyée avec la requête :
     if (req.file != undefined) {
@@ -124,7 +117,6 @@ const addUserAvatar = async (req, res, next) => {
             if (avatar != avatarImg) {
                 fs.unlink(`images/${avatar}`, (err) => {
                     if (err) throw err;
-                    console.log(`Avatar ${avatar} supprimée de la BDD!`);
                 });
             }
 
@@ -145,7 +137,7 @@ const addUserAvatar = async (req, res, next) => {
             .catch(error => res.status(500).json({ error }));
     }
     else
-        console.log("Pas de mise à jour possible !")
+        res.status(200).json({ message: "Pas de mise à jour possible !" });
 }
 
 /**
@@ -164,20 +156,15 @@ const loginUser = async (req, res, next) => {
         }
     );
 
-    // Comparaison entre l'email de la requête et celui présent dans la BDD
-    if (!user || user.email != req.body.email) {
-        res.status(401).json({ message: "Email incorrect !" });
+    if (user)
+        valid = await bcrypt.compare(req.body.password, user.pass_word);
+
+    // Comparaison entre l'email de la requête et celui présent dans la BDD et entre le mot de passe de la requête et celui présent dans la BDD
+    if (!user || user.email != req.body.email || !valid) {
+        res.status(401).json({ message: "Email ou mot de passe incorrect !" });
         return;
     };
-    // Comparaison entre le mot de passe de la requête et celui présent dans la BDD
-    if (user) {
-        valid = await bcrypt.compare(req.body.password, user.pass_word);
-        console.log(valid);
-        if (!valid) {
-            res.status(401).json({ message: "Mot de passe incorrect !" });
-            return;
-        }
-    };
+
     // Si tout est ok, envoi de la réponse : id et token
     res.status(200).json({
         userId: user.id,
@@ -192,7 +179,6 @@ const loginUser = async (req, res, next) => {
         )
     });
 }
-
 
 module.exports = { getAllUsers, getOneUser, signupUser, addUserAvatar, loginUser };
 
