@@ -10,13 +10,13 @@ const createPost = async (req, res, next) => {
 
     let { body, file } = req;
     let postPicture = "";
-
+    let size = 200000;
+    let pictureSize = file.size < size;
     // Création de l'URL de l'image
-    if (file != undefined) {
+    if (file != undefined && pictureSize) {
 
         const name = file.filename
         postPicture = `${req.protocol}://${req.get('host')}/images/${name}`;
-
     }
     else
         postPicture = "";
@@ -32,7 +32,14 @@ const createPost = async (req, res, next) => {
             type: QueryTypes.INSERT
         }
     ).then(() => {
-        res.status(201).json({ message: "Message envoyé !" });
+        console.log("pictureSize", pictureSize)
+        if (!pictureSize) {
+            res.status(201).json({
+                message: "Message envoyé !",
+                picture: `Le poids de l'image doit être inférieur à ${size / 1000}k`
+            });
+        } else
+            res.status(201).json({ mess: "Message envoyé !" });
     })
         .catch(error => res.status(500).json({ error }));
 };
