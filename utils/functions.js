@@ -37,6 +37,19 @@ const replaceChar = (txt) => {
     return txt.replace(reg, function () {
         return charSpecTab[arguments[0].toLowerCase()];
     }).toLowerCase();
-}
+};
 
-module.exports = replaceChar;
+/**
+ * Taille maximum de l'image :
+ * @param {number} size : ;
+ * @param {*} file 
+ * @returns 
+ */
+const sizeOfPicture = (size, file) => {
+    return {
+        size: size,
+        pictureSize: file.size < size
+    };
+};
+
+module.exports = { replaceChar, sizeOfPicture };

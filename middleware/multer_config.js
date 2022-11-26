@@ -1,6 +1,6 @@
 const multer = require("multer");
 const utf8 = require("utf8");
-const replaceChar = require("../utils/functions");
+const { replaceChar } = require("../utils/functions");
 
 const MIME_TYPES = {
     "image/jpg": "jpg",

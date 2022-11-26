@@ -3,6 +3,8 @@ const fs = require("fs");
 const Db = require("../db/db.js");
 const utf8 = require("utf8");
 
+const { sizeOfPicture } = require("../utils/functions");
+
 /**
  * Création d'un message
  */
@@ -10,10 +12,11 @@ const createPost = async (req, res, next) => {
 
     let { body, file } = req;
     let postPicture = "";
-    let size = 200000;
-    let pictureSize = file.size < size;
+
+    let sizeObj = sizeOfPicture(200000, file);
+
     // Création de l'URL de l'image
-    if (file != undefined && pictureSize) {
+    if (file != undefined && sizeObj.pictureSize) {
 
         const name = file.filename
         postPicture = `${req.protocol}://${req.get('host')}/images/${name}`;
@@ -32,14 +35,14 @@ const createPost = async (req, res, next) => {
             type: QueryTypes.INSERT
         }
     ).then(() => {
-        console.log("pictureSize", pictureSize)
-        if (!pictureSize) {
+        console.log("pictureSize", sizeObj.pictureSize)
+        if (!sizeObj.pictureSize) {
             res.status(201).json({
                 message: "Message envoyé !",
-                picture: `Le poids de l'image doit être inférieur à ${size / 1000}k`
+                picture: `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`
             });
         } else
-            res.status(201).json({ mess: "Message envoyé !" });
+            res.status(201).json({ message: "Message envoyé !" });
     })
         .catch(error => res.status(500).json({ error }));
 };
@@ -48,16 +51,8 @@ const createPost = async (req, res, next) => {
  * Envoie tous les messages
  */
 const sendAllPosts = async (req, res, next) => {
-    // const [posts] = await Db.query(`
-    //     SELECT post, post_picture, user_id, createdAt
-    //     FROM posts WHERE is_censored = 0
-    //     ORDER BY createdAt DESC;
-    //     `
-    // );
 
-    // IFNULL(B.like1, 0) : renvoie la valeur de like1 et 0 si like1 est NULL
-    // 
-    const [posts2] = await Db.query(`
+    const [posts] = await Db.query(`
         SELECT email, user_picture, post, post_picture, posts.id, posts.user_id, posts.createdAt,
         IFNULL(B.like1, 0) AS like1, IFNULL(C.like0, 0) AS like0 
         FROM posts 
@@ -69,10 +64,9 @@ const sendAllPosts = async (req, res, next) => {
         LEFT OUTER JOIN
         (SELECT COUNT(*) as like0, post_id FROM likes WHERE post_like=0 GROUP BY post_id) C
         ON posts.id = C.post_id
-        ORDER BY posts.createdAt DESC;
-        `
+        ORDER BY posts.createdAt DESC;    `
     )
-    res.send(posts2);
+    res.send(posts);
 
 };
 
@@ -103,7 +97,9 @@ const idOfBd = async (req) => {
 
 }
 
-// Recherche le propriétaire d'un post :
+/**
+ * Recherche le propriétaire d'un post :
+ */
 const postUserFind = async (req, res, next) => {
     const [user] = await Db.query(`
         SELECT user_id FROM posts WHERE id = ?`,
@@ -148,10 +144,14 @@ const modifyPost = async (req, res, next) => {
                 type: QueryTypes.SELECT
             }
         );
+
+        let sizeObj = sizeOfPicture(200000, req.file);
+
         // Création d'un OBJET vide qui recevra les réponses :
         let resObj = {}
         // On vérifie si une image est présente dans la requête :
-        if (postBDD && req.file != undefined) {
+        if (postBDD && req.file != undefined && sizeObj.pictureSize) {
+
 
             // Récupération du nom de l'image à partir de l'URL dans la BDD :
             const image = postBDD.post_picture.split('/images/')[1];
@@ -174,10 +174,16 @@ const modifyPost = async (req, res, next) => {
                     type: QueryTypes.PUT
                 }
             ).then(() => {
+
                 resObj.message1 = "L'image a été modifiée !";
+
             })
                 .catch(error => res.status(500).json({ error }));
-        }
+
+        } else if (!sizeObj.pictureSize) {
+            resObj.picture =
+                `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`;
+        };
         // Vérification de la modification du message :
         if (postBDD && postBDD.post != req.body.post) {
 

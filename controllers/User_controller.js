@@ -2,7 +2,9 @@ const { QueryTypes } = require("sequelize");
 const fs = require("fs");
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const securePassword = require('../utils/secure_password')
+const securePassword = require('../utils/secure_password');
+
+const { sizeOfPicture } = require("../utils/functions");
 
 const Db = require("../db/db.js");
 
@@ -97,8 +99,10 @@ const signupUser = async (req, res, next) => {
  */
 const addUserAvatar = async (req, res, next) => {
 
+    let sizeObj = sizeOfPicture(100000, req.file);
+
     // Si une image est envoyée avec la requête :
-    if (req.file != undefined) {
+    if (req.file != undefined && sizeObj.pictureSize) {
         // On vérifie si l'utilisateur a déjà un avatar :
         let [picture] = await Db.query(`
                 SELECT user_picture 
@@ -136,8 +140,15 @@ const addUserAvatar = async (req, res, next) => {
         })
             .catch(error => res.status(500).json({ error }));
     }
-    else
-        res.status(200).json({ message: "Pas de mise à jour possible !" });
+    else {
+
+        if (!sizeObj.pictureSize)
+            res.status(200).json({
+                picture: `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`
+            });
+        else
+            res.status(200).json({ message: "Pas de mise à jour possible !" });
+    }
 }
 
 /**
