@@ -11,13 +11,18 @@ const MIME_TYPES = {
 
 const storage = multer.diskStorage({
     destination: (req, file, callback) => {
+        // if (file.size < 200000)
+        console.log("multer 15", file)
         callback(null, "images")
     },
     filename: (req, file, callback) => {
+        // if (file.size < 200000) {
+        console.log("multer 20", file.size)
         let fileName = utf8.decode(file.originalname).split(' ').join('_').split(".")[0];
         fileName = replaceChar(fileName);
         const extension = MIME_TYPES[file.mimetype];
         callback(null, `${fileName}${Date.now()}.${extension}`);
+        // }
     }
 
 });

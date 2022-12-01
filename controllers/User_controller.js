@@ -101,18 +101,23 @@ const addUserAvatar = async (req, res, next) => {
 
     let sizeObj = sizeOfPicture(100000, req.file);
 
-    // Si une image est envoyée avec la requête :
+    const userId = req.auth.userId;
+    const role = req.auth.role;
+
+    // Si une image est envoyée avec la requête et si le poids de l'image est conforme :
     if (req.file != undefined && sizeObj.pictureSize) {
         // On vérifie si l'utilisateur a déjà un avatar :
         let [picture] = await Db.query(`
                 SELECT user_picture 
                 FROM users
-                WHERE id = ?`,
+                WHERE id = ?
+                AND(id = ? OR ? = 1);`,
             {
-                replacements: [req.params.id],
+                replacements: [req.params.id, userId, role],
                 type: QueryTypes.SELECT
             }
         );
+        console.log("picture", picture)
         // Si un avatar est présent dans la BDD, on le supprime :
         if (picture.user_picture !== "") {
             // Récupération du nom de l'image à partir de l'URL dans la BDD :
@@ -130,9 +135,10 @@ const addUserAvatar = async (req, res, next) => {
         await Db.query(`
             UPDATE users
             SET user_picture = ?
-            WHERE id=?;`,
+            WHERE id = ?
+            AND(id = ? OR ? = 1);`,
             {
-                replacements: [userAvatar, req.params.id],
+                replacements: [userAvatar, req.params.id, userId, role],
                 type: QueryTypes.UPDATE
             }
         ).then(() => {
@@ -142,14 +148,15 @@ const addUserAvatar = async (req, res, next) => {
     }
     else {
 
-        if (!sizeObj.pictureSize)
+        !sizeObj.pictureSize ? (
             res.status(200).json({
                 picture: `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`
-            });
-        else
-            res.status(200).json({ message: "Pas de mise à jour possible !" });
-    }
-}
+            })
+        ) : (
+            res.status(200).json({ message: "Pas de mise à jour possible !" })
+        );
+    };
+};
 
 /**
  * Authentifie un utilisateur

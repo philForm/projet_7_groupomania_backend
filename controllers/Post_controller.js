@@ -6,7 +6,7 @@ const utf8 = require("utf8");
 const { sizeOfPicture } = require("../utils/functions");
 
 /**
- * Création d'un message
+ * Création d'un message :
  */
 const createPost = async (req, res, next) => {
 
@@ -15,14 +15,21 @@ const createPost = async (req, res, next) => {
 
     let sizeObj = sizeOfPicture(200000, file);
 
-    // Création de l'URL de l'image
+    // Création de l'URL de l'image si l'image existe et que son poids est conforme
     if (file != undefined && sizeObj.pictureSize) {
 
         const name = file.filename
         postPicture = `${req.protocol}://${req.get('host')}/images/${name}`;
     }
-    else
+    // Si le poids de l'image est trop élevé, on supprime l'image enregistrée par Multer du dossier images :
+    else {
+        fs.unlink(`images/${file.filename}`, (err) => {
+            if (err) throw err;
+        });
+
         postPicture = "";
+    }
+
 
     await Db.query(`
             INSERT INTO posts (post, post_picture, user_id) VALUES (?,?,?);`,
@@ -35,13 +42,19 @@ const createPost = async (req, res, next) => {
             type: QueryTypes.INSERT
         }
     ).then(() => {
-        console.log("pictureSize", sizeObj.pictureSize)
-        if (!sizeObj.pictureSize) {
+        console.log("pictureSize", sizeObj.pictureSize);
+        // Si l'image existe et si son poids est trop élevé :
+        if (file != undefined && !sizeObj.pictureSize) {
+            const [postId] = Db.query(`SELECT MAX(id) as postId FROM posts;`)
+            console.log('postId', postId)
+
             res.status(201).json({
                 message: "Message envoyé !",
-                picture: `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`
+                picture: `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`,
+                postId: postId
             });
-        } else
+        }
+        else
             res.status(201).json({ message: "Message envoyé !" });
     })
         .catch(error => res.status(500).json({ error }));
@@ -145,6 +158,7 @@ const modifyPost = async (req, res, next) => {
             }
         );
 
+
         let sizeObj = sizeOfPicture(200000, req.file);
 
         // Création d'un OBJET vide qui recevra les réponses :
@@ -179,8 +193,9 @@ const modifyPost = async (req, res, next) => {
 
             })
                 .catch(error => res.status(500).json({ error }));
-
-        } else if (!sizeObj.pictureSize) {
+        }
+        // Si l'image existe et si son poids est trop élevé
+        else if (req.file != undefined && !sizeObj.pictureSize) {
             resObj.picture =
                 `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`;
         };

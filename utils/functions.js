@@ -46,10 +46,11 @@ const replaceChar = (txt) => {
  * @returns 
  */
 const sizeOfPicture = (size, file) => {
-    return {
-        size: size,
-        pictureSize: file.size < size
-    };
+    if (file != undefined)
+        return {
+            size: size,
+            pictureSize: file.size < size
+        };
 };
 
 module.exports = { replaceChar, sizeOfPicture };
