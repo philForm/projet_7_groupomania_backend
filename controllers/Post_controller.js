@@ -23,14 +23,18 @@ const createPost = async (req, res, next) => {
     }
     // Si le poids de l'image est trop élevé, on supprime l'image enregistrée par Multer du dossier images :
     else {
-        fs.unlink(`images/${file.filename}`, (err) => {
-            if (err) throw err;
-        });
+        if (file != undefined) {
+
+            fs.unlink(`images/${file.filename}`, (err) => {
+                if (err) throw err;
+            });
+
+        };
 
         postPicture = "";
     }
 
-
+    // Insertion des données du nouveau post dans la BDD :
     await Db.query(`
             INSERT INTO posts (post, post_picture, user_id) VALUES (?,?,?);`,
         {
@@ -43,21 +47,35 @@ const createPost = async (req, res, next) => {
         }
     ).then(() => {
         console.log("pictureSize", sizeObj.pictureSize);
+        console.log("postPicture", !!postPicture);
         // Si l'image existe et si son poids est trop élevé :
-        if (file != undefined && !sizeObj.pictureSize) {
-            const [postId] = Db.query(`SELECT MAX(id) as postId FROM posts;`)
-            console.log('postId', postId)
-
-            res.status(201).json({
-                message: "Message envoyé !",
-                picture: `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`,
-                postId: postId
-            });
-        }
-        else
+        // if (file != undefined && !sizeObj.pictureSize) {
+        if (!!postPicture == true && sizeObj.pictureSize) {
             res.status(201).json({ message: "Message envoyé !" });
+        }
+        else {
+            const func = async () => {
+                const [postId] = await Db.query(`SELECT MAX(id) as postId FROM posts;`);
+                // const postId = maxId();
+                // console.log('postId', maxId());
+                console.log('postId[0].postId', postId[0].postId)
+
+                res.status(201).json({
+                    message: "Message envoyé !",
+                    picture: `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`,
+                    postId: postId[0].postId
+                });
+            };
+            func()
+        }
     })
         .catch(error => res.status(500).json({ error }));
+};
+
+const maxId = async () => {
+    const [postId] = await Db.query(`SELECT MAX(id) as postId FROM posts;`);
+    console.log("maxId", postId[0].postId)
+    return postId[0].postId;
 };
 
 /**
@@ -171,10 +189,12 @@ const modifyPost = async (req, res, next) => {
             const image = postBDD.post_picture.split('/images/')[1];
             // Si une image existe elle est supprimée du dossier :
             if (image) {
-                // Suppression de l'ancienne image du dossier images :
-                fs.unlink(`images/${image}`, (err) => {
-                    if (err) throw err;
-                });
+                // Suppression de l'ancienne image du dossier images si elle existe :
+                try {
+                    fs.unlink(`images/${image}`);
+                } catch (err) {
+                    console.log(err);
+                }
             }
 
             // Envoi de l'URL de la nouvelle image dans la BDD :
@@ -254,13 +274,14 @@ const deletePost = async (req, res, next) => {
 
         // Vérification de l'existence de l'URL de l'image :
         if (imageUrl && imageUrl.post_picture) {
-
             // Récupération du nom de l'image à partir de l'URL :
             const image = imageUrl.post_picture.split('/images/')[1];
-            // Suppression de l'image :
-            fs.unlink(`images/${image}`, (err) => {
-                if (err) throw err;
-            });
+            // Suppression de l'image si elle existe :
+            try {
+                fs.unlink(`images/${image}`);
+            } catch (err) {
+                console.log(err);
+            }
         }
         // Suppression du post :
         await Db.query(`

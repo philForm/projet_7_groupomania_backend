@@ -124,9 +124,12 @@ const addUserAvatar = async (req, res, next) => {
             const avatar = picture.user_picture.split('/images/')[1];
             // Suppression de l'ancienne image du dossier images :
             if (avatar != avatarImg) {
-                fs.unlink(`images/${avatar}`, (err) => {
-                    if (err) throw err;
-                });
+                try {
+                    fs.unlink(`images/${avatar}`);
+                } catch (err) {
+                    console.log(err);
+                }
+
             }
 
         }
