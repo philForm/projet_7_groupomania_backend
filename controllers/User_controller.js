@@ -152,6 +152,10 @@ const addUserAvatar = async (req, res, next) => {
     else {
 
         !sizeObj.pictureSize ? (
+            // On supprime l'image enregistrée par Multer du dossier images :
+            fs.unlink(`images/${req.file.filename}`, (err) => {
+                if (err) throw err;
+            }),
             res.status(200).json({
                 picture: `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`
             })

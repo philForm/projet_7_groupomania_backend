@@ -15,7 +15,7 @@ const createPost = async (req, res, next) => {
 
     let sizeObj = sizeOfPicture(200000, file);
 
-    // Création de l'URL de l'image si l'image existe et que son poids est conforme
+    // Création de l'URL de l'image si l'image existe et que son poids est conforme :
     if (file != undefined && sizeObj.pictureSize) {
 
         const name = file.filename
@@ -176,14 +176,12 @@ const modifyPost = async (req, res, next) => {
             }
         );
 
-
         let sizeObj = sizeOfPicture(200000, req.file);
 
         // Création d'un OBJET vide qui recevra les réponses :
         let resObj = {}
-        // On vérifie si une image est présente dans la requête :
+        // On vérifie si une image est présente dans la requête et que son poids est conforme :
         if (postBDD && req.file != undefined && sizeObj.pictureSize) {
-
 
             // Récupération du nom de l'image à partir de l'URL dans la BDD :
             const image = postBDD.post_picture.split('/images/')[1];
@@ -214,8 +212,13 @@ const modifyPost = async (req, res, next) => {
             })
                 .catch(error => res.status(500).json({ error }));
         }
-        // Si l'image existe et si son poids est trop élevé
+        // Si l'image existe et si son poids est trop élevé :
         else if (req.file != undefined && !sizeObj.pictureSize) {
+
+            // On supprime l'image enregistrée par Multer du dossier images :
+            fs.unlink(`images/${req.file.filename}`, (err) => {
+                if (err) throw err;
+            });
             resObj.picture =
                 `Le poids de l'image doit être inférieur à ${sizeObj.size / 1000}k`;
         };
